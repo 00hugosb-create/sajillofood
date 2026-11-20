@@ -19,3 +19,6 @@ La primera vez te pide crear el primer perfil (adulto). Después, en **Familia**
     docker compose up -d --build
 
 Los datos y fotos quedan en `./data` (haz copia de esa carpeta). Para acceder desde fuera, pon un proxy inverso con HTTPS (Caddy o Nginx) delante del puerto 3000.
+
+## Alojamiento compartido (OVH, Apache + PHP)
+No hace falta Node: `public/api.php` hace de backend. Abre `https://TU_DOMINIO/public/` (el `.htaccess` de la raíz redirige `/` a `/public/` y bloquea `.git`, `server.js` y `data/`). PHP necesita permiso de escritura en la carpeta del sitio para crear `data/` y `public/uploads/`.

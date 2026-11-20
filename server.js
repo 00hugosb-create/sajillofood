@@ -21,7 +21,7 @@ const readBody = req => new Promise(ok => {
 });
 
 async function api(req, res, url) {
-  const m = req.method, p = url.pathname.slice(4).split('/').filter(Boolean), b = await readBody(req);
+  const m = req.method, p = (url.pathname === '/api.php' ? (url.searchParams.get('p') || '') : url.pathname.slice(4)).split('/').filter(Boolean), b = await readBody(req);
   const me = db.users.find(u => u.id === db.sessions[req.headers['x-token']]);
   if (p[0] === 'users' && m === 'GET' && !p[1]) return send(res, 200, db.users.map(pub));
   if (p[0] === 'login' && m === 'POST') {
@@ -78,10 +78,10 @@ async function api(req, res, url) {
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (url.pathname.startsWith('/api/')) return api(req, res, url).catch(() => send(res, 500, {}));
+  if (url.pathname === '/api.php') return api(req, res, url).catch(() => send(res, 500, {}));
   let f;
   if (url.pathname.startsWith('/uploads/')) f = path.join(DATA, 'uploads', path.basename(url.pathname));
-  else f = path.join(PUB, url.pathname === '/' ? 'index.html' : path.basename(url.pathname));
+  else f = path.join(PUB, url.pathname === '/' || url.pathname === '/public/' ? 'index.html' : path.basename(url.pathname));
   fs.readFile(f, (e, d) => {
     if (e) { res.writeHead(404); return res.end('No encontrado'); }
     res.writeHead(200, { 'content-type': MIME[path.extname(f)] || 'application/octet-stream' });

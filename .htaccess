@@ -1,0 +1,3 @@
+RewriteEngine On
+RewriteRule ^(\.git|server\.js|package\.json|Dockerfile|docker-compose\.yml|README\.md|data)(/|$) - [F,L]
+RewriteRule ^$ public/ [R=302,L]
