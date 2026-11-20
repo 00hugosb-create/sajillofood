@@ -22,3 +22,8 @@ Los datos y fotos quedan en `./data` (haz copia de esa carpeta). Para acceder de
 
 ## Alojamiento compartido (OVH, Apache + PHP)
 No hace falta Node: `public/api.php` hace de backend. Abre `https://TU_DOMINIO/public/` (el `.htaccess` de la raíz redirige `/` a `/public/` y bloquea `.git`, `server.js` y `data/`). PHP necesita permiso de escritura en la carpeta del sitio para crear `data/` y `public/uploads/`.
+
+## Base de datos MySQL de OVH
+1. Manager de OVH → Web Cloud → Hosting → pestaña **Bases de datos** → crear una (o usar la incluida) y anotar servidor, nombre, usuario y contraseña.
+2. En el servidor, copia `config.sample.php` como `config.php` (en la raíz del sitio, junto a `.htaccess`) y rellena los datos. `config.php` no se sube a git.
+3. Abre `/public/`: las tablas se crean solas al primer acceso. Las fotos se guardan dentro de la base de datos.
