@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sajillo Food</title><link rel="icon" href="logo.png">
+<style>
+:root{--g:#475130;--o:#d06a40;--l:#6f8a3a;--c:#fcf7ea;--w:#fffdf6;--line:#e6dcc0}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Quicksand","Nunito","Trebuchet MS",system-ui,sans-serif;background:var(--c);color:var(--g);line-height:1.45}
+h2{font-size:1.5rem;margin:.2em 0 .6em}h3{margin:.2em 0}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--w);border-bottom:4px solid var(--o)}
+header img{height:64px}.sp{flex:1}
+nav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;position:sticky;top:0;background:var(--c);z-index:5}
+nav button{border:2px solid var(--g);background:none;color:var(--g);border-radius:99px;padding:8px 16px;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}
+nav button.on{background:var(--g);color:var(--c)}
+main{max-width:980px;margin:0 auto;padding:8px 14px 30px}
+button,input,select,textarea{font:inherit;color:inherit}
+.btn{background:var(--o);color:#fff;border:0;border-radius:12px;padding:9px 16px;font-weight:700;cursor:pointer}
+.btn.sec{background:none;color:var(--g);border:2px solid var(--g)}.btn.sm{padding:4px 10px;font-size:.85rem}
+input,select,textarea{border:2px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;width:100%}
+:focus-visible{outline:3px solid var(--o);outline-offset:2px}
+.card{background:var(--w);border:2px solid var(--line);border-radius:16px;padding:12px;margin-bottom:12px}
+.day{border-left:8px solid var(--l)}.day.we{border-left-color:var(--o)}
+.slot{display:grid;grid-template-columns:130px 1fr 52px;gap:8px;align-items:center;margin:6px 0}
+.slot small{font-weight:700}.slot img{width:52px;height:52px;object-fit:cover;border-radius:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.meal img{width:100%;height:150px;object-fit:cover;border-radius:12px;margin-bottom:8px}
+.ph{height:150px;border-radius:12px;background:var(--line);display:grid;place-items:center;font-size:2.5rem;margin-bottom:8px}
+.st{font-size:1.7rem;cursor:pointer;color:var(--line);user-select:none}.st.on{color:var(--o)}
+.rank{display:flex;gap:12px;align-items:center}.pos{font-size:1.8rem;font-weight:800;width:44px;text-align:center;color:var(--o)}
+.rank img{width:64px;height:64px;object-fit:cover;border-radius:12px}
+.item{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
+.item.done span{text-decoration:line-through;opacity:.5}.item input{width:22px;height:22px;accent-color:var(--l)}
+.login{max-width:420px;margin:0 auto;padding:20px;text-align:center}.login img{width:240px;max-width:80%}
+.who{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:14px 0}
+.who button{padding:12px 20px;border-radius:14px;border:2px solid var(--g);background:var(--w);font-weight:700;cursor:pointer}
+.who button.on{background:var(--g);color:var(--c)}
+footer{text-align:center;padding:20px;font-size:.95rem}
+@media(max-width:560px){.slot{grid-template-columns:90px 1fr 44px}.slot img{width:44px;height:44px}header img{height:48px}}
+</style></head><body>
+<div id="app"></div>
+<script>
+const $ = s => document.querySelector(s);
+const S = { token: localStorage.tok, d: null, tab: 'menu', off: 0, edit: null, pick: null, users: [] };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const TAG = 'En casa, comer bien es cosa de todos.';
+const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+async function api(m, u, b) {
+  const r = await fetch('api.php?p=' + encodeURIComponent(u.slice(1)), { method: m, headers: { 'content-type': 'application/json', 'x-token': S.token || '' }, body: b ? JSON.stringify(b) : undefined });
+  if (r.status === 401) { S.token = null; delete localStorage.tok; boot(); throw 0; }
+  return r.json();
+}
+async function boot() {
+  if (S.token) { S.d = await api('GET', '/data'); return render(); }
+  S.users = await (await fetch('api.php?p=users')).json();
+  loginView();
+}
+async function load() { S.d = await api('GET', '/data'); render(); }
+
+function loginView() {
+  const none = !S.users.length;
+  $('#app').innerHTML = `<div class="login"><img src="logo.png" alt="Sajillo Food">
+  ${none ? `<h2>Crea el primer perfil</h2><p>Será el de un adulto; luego añades al resto de la familia.</p>
+    <input id="nn" placeholder="Nombre"><br><br><input id="np" type="password" placeholder="PIN (opcional)"><br><br>
+    <button class="btn" onclick="firstUser()">Crear y entrar</button>`
+  : `<h2>¿Quién eres?</h2><div class="who">${S.users.map(u => `<button class="${S.pick === u.id ? 'on' : ''}" onclick="S.pick='${u.id}';loginView()">${esc(u.name)}</button>`).join('')}</div>
+    ${S.pick ? `<input id="lp" type="password" placeholder="PIN (vacío si no tienes)" onkeydown="if(event.key==='Enter')doLogin()"><br><br><button class="btn" onclick="doLogin()">Entrar</button>` : ''}`}
+  <p style="margin-top:24px">${TAG}</p></div>`;
+}
+async function firstUser() {
+  const name = $('#nn').value.trim(); if (!name) return;
+  const r = await fetch('api.php?p=users', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, pin: $('#np').value, role: 'adult' }) });
+  const j = await r.json(); S.token = j.token; localStorage.tok = j.token; boot();
+}
+async function doLogin() {
+  const r = await fetch('api.php?p=login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: S.pick, pin: $('#lp').value }) });
+  const j = await r.json(); if (!j.token) return alert(j.error);
+  S.token = j.token; localStorage.tok = j.token; boot();
+}
+
+const monday = () => { const t = new Date(); t.setHours(12); t.setDate(t.getDate() - ((t.getDay() + 6) % 7) + S.off * 7); return t; };
+const wk = () => monday().toISOString().slice(0, 10);
+const slotsOf = i => i < 5 ? [['tupper', '🥡 Tupper (papá)'], ['comida', '🍲 Comida (mamá y mayor)'], ['cena', '🌙 Cena (todos)']] : [['comida', '🍲 Comida'], ['cena', '🌙 Cena']];
+const meal = id => S.d.meals.find(m => m.id === id);
+const avg = (m, role) => {
+  const v = Object.entries(m.ratings || {}).filter(([u]) => !role || S.d.users.find(x => x.id === u)?.role === role).map(e => e[1]);
+  return v.length ? v.reduce((a, b) => a + b) / v.length : 0;
+};
+const stars = (m) => [1, 2, 3, 4, 5].map(n => `<span class="st ${n <= (m.ratings[S.d.me.id] || 0) ? 'on' : ''}" onclick="rate('${m.id}',${n})" title="${n}">★</span>`).join('');
+
+function render() {
+  const tabs = [['menu', 'Menú'], ['meals', 'Comidas'], ['shop', 'Compra'], ['rank', 'Ranking'], ['fam', 'Familia']];
+  $('#app').innerHTML = `<header><img src="logo.png" alt="Sajillo Food"><div class="sp"></div><b>Hola, ${esc(S.d.me.name)}</b></header>
+  <nav>${tabs.map(([k, t]) => `<button class="${S.tab === k ? 'on' : ''}" onclick="S.tab='${k}';render()">${t}</button>`).join('')}</nav>
+  <main>${{ menu: menuV, meals: mealsV, shop: shopV, rank: rankV, fam: famV }[S.tab]()}</main><footer>${TAG}</footer>`;
+}
+
+function menuV() {
+  const mon = monday(), w = S.d.menu[wk()] || {};
+  const end = new Date(mon); end.setDate(end.getDate() + 6);
+  const f = d => d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  return `<div class="row"><button class="btn sec sm" onclick="S.off--;render()">← Anterior</button><h2 style="margin:0">${f(mon)} – ${f(end)}</h2>
+  <button class="btn sec sm" onclick="S.off++;render()">Siguiente →</button>${S.off ? `<button class="btn sm" onclick="S.off=0;render()">Esta semana</button>` : ''}</div><br>
+  ${DAYS.map((d, i) => `<div class="card day ${i > 4 ? 'we' : ''}"><h3>${d}</h3>${slotsOf(i).map(([k, lab]) => {
+    const key = i + '-' + k, m = meal(w[key]);
+    return `<div class="slot"><small>${lab}</small><select onchange="setMenu('${key}',this.value)" aria-label="${d} ${lab}"><option value="">— elegir —</option>${S.d.meals.map(x => `<option value="${x.id}" ${x.id === w[key] ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>${m?.photo ? `<img src="${m.photo}" alt="">` : '<span></span>'}</div>`;
+  }).join('')}</div>`).join('')}
+  ${S.d.meals.length ? '' : '<p>Aún no hay comidas. Añade la primera en la pestaña <b>Comidas</b>.</p>'}`;
+}
+async function setMenu(slot, v) { await api('PUT', '/menu', { week: wk(), slot, meal: v || null }); load(); }
+
+function mealsV() {
+  const e = S.edit, m = e && e !== 'new' ? meal(e) : {};
+  const form = e ? `<div class="card"><h3>${m.id ? 'Editar comida' : 'Nueva comida'}</h3>
+    <input id="mn" placeholder="Nombre (ej. Macarrones con tomate)" value="${esc(m.name)}"><br><br>
+    <textarea id="mi" rows="4" placeholder="Ingredientes, uno por línea (para la lista de compra)">${esc(m.ingredients)}</textarea><br><br>
+    <input id="mp" type="file" accept="image/*"><br><br>
+    <div class="row"><button class="btn" onclick="saveMeal('${m.id || 'new'}')">Guardar comida</button><button class="btn sec" onclick="S.edit=null;render()">Cancelar</button></div></div>` : `<button class="btn" onclick="S.edit='new';render()">+ Nueva comida</button><br><br>`;
+  return `<h2>Comidas</h2>${form}<div class="grid">${S.d.meals.map(m => `<div class="card meal">
+    ${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}">` : '<div class="ph">🍽️</div>'}<h3>${esc(m.name)}</h3>
+    <div>${stars(m)}</div><small>Niños: ${avg(m, 'kid') ? avg(m, 'kid').toFixed(1) + ' ★' : 'sin votos'}</small>
+    <div class="row" style="margin-top:8px"><button class="btn sec sm" onclick="S.edit='${m.id}';render();scrollTo(0,0)">Editar</button><button class="btn sec sm" onclick="delMeal('${m.id}')">Borrar</button></div></div>`).join('')}</div>`;
+}
+const shrink = f => new Promise(ok => {
+  const i = new Image();
+  i.onload = () => { const k = Math.min(1, 800 / Math.max(i.width, i.height)), c = document.createElement('canvas'); c.width = i.width * k; c.height = i.height * k; c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', .8)); };
+  i.src = URL.createObjectURL(f);
+});
+async function saveMeal(id) {
+  const name = $('#mn').value.trim(); if (!name) return $('#mn').focus();
+  const f = $('#mp').files[0];
+  await api('PUT', '/meals/' + id, { name, ingredients: $('#mi').value, photo: f ? await shrink(f) : null });
+  S.edit = null; load();
+}
+async function delMeal(id) { if (confirm('¿Borrar esta comida?')) { await api('DELETE', '/meals/' + id); load(); } }
+async function rate(id, n) { await api('POST', '/rate/' + id, { score: n }); load(); }
+
+function shopV() {
+  const it = S.d.shop;
+  return `<h2>Lista de la compra</h2><div class="row"><input id="si" style="flex:1" placeholder="Añadir producto" onkeydown="if(event.key==='Enter')addItem()"><button class="btn" onclick="addItem()">Añadir</button></div><br>
+  <div class="row"><button class="btn sec sm" onclick="fromMenu()">Añadir ingredientes del menú de esta semana</button><button class="btn sec sm" onclick="clearDone()">Quitar los marcados</button></div>
+  <div class="card" style="margin-top:12px">${it.length ? it.map((x, i) => `<div class="item ${x.done ? 'done' : ''}"><input type="checkbox" ${x.done ? 'checked' : ''} onchange="toggle(${i})"><span style="flex:1">${esc(x.t)}</span></div>`).join('') : 'La lista está vacía.'}</div>`;
+}
+const saveShop = async () => { await api('PUT', '/shop', { items: S.d.shop }); render(); };
+function addItem() { const v = $('#si').value.trim(); if (v) { S.d.shop.push({ t: v, done: false }); saveShop(); } }
+function toggle(i) { S.d.shop[i].done = !S.d.shop[i].done; saveShop(); }
+function clearDone() { S.d.shop = S.d.shop.filter(x => !x.done); saveShop(); }
+function fromMenu() {
+  const have = new Set(S.d.shop.map(x => x.t.toLowerCase()));
+  for (const id of new Set(Object.values(S.d.menu[wk()] || {}))) {
+    for (const l of (meal(id)?.ingredients || '').split('\n').map(s => s.trim()).filter(Boolean))
+      if (!have.has(l.toLowerCase())) { have.add(l.toLowerCase()); S.d.shop.push({ t: l, done: false }); }
+  }
+  saveShop();
+}
+
+function rankV() {
+  const list = S.d.meals.filter(m => Object.keys(m.ratings).length).sort((a, b) => (avg(b, 'kid') - avg(a, 'kid')) || (avg(b) - avg(a)));
+  const medal = ['🥇', '🥈', '🥉'];
+  return `<h2>Ranking de los niños</h2>${list.length ? list.map((m, i) => `<div class="card rank"><div class="pos">${medal[i] || i + 1}</div>
+    ${m.photo ? `<img src="${m.photo}" alt="">` : '<div class="ph" style="width:64px;height:64px;margin:0;font-size:1.6rem">🍽️</div>'}
+    <div style="flex:1"><h3>${esc(m.name)}</h3><small>Niños ${avg(m, 'kid') ? avg(m, 'kid').toFixed(1) : '–'} ★ · Todos ${avg(m).toFixed(1)} ★ · ${Object.keys(m.ratings).length} votos</small></div></div>`).join('')
+    : 'Todavía no hay votos. Puntúa las comidas en la pestaña <b>Comidas</b>.'}`;
+}
+
+function famV() {
+  const adult = S.d.me.role === 'adult';
+  return `<h2>Familia</h2>${S.d.users.map(u => `<div class="card row"><b style="flex:1">${esc(u.name)}</b><small>${u.role === 'kid' ? 'Niño/a' : 'Adulto'}</small>${adult && u.id !== S.d.me.id ? `<button class="btn sec sm" onclick="delUser('${u.id}')">Quitar</button>` : ''}</div>`).join('')}
+  ${adult ? `<div class="card"><h3>Añadir persona</h3><input id="un" placeholder="Nombre"><br><br><select id="ur"><option value="kid">Niño/a</option><option value="adult">Adulto</option></select><br><br>
+  <input id="up" type="password" placeholder="PIN (opcional)"><br><br><button class="btn" onclick="addUser()">Añadir</button></div>` : ''}
+  <button class="btn sec" onclick="delete localStorage.tok;S.token=null;S.pick=null;boot()">Cambiar de perfil</button>`;
+}
+async function addUser() { const name = $('#un').value.trim(); if (!name) return; await api('POST', '/users', { name, role: $('#ur').value, pin: $('#up').value }); load(); }
+async function delUser(id) { if (confirm('¿Quitar este perfil?')) { await api('DELETE', '/users/' + id); load(); } }
+boot();
+</script></body></html>
