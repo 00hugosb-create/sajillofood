@@ -11,7 +11,7 @@ const FILE = DATA + '/db.json';
 const db = fs.existsSync(FILE) ? JSON.parse(fs.readFileSync(FILE)) : { users: [], meals: [], menu: {}, shop: [], sessions: {} };
 const save = () => fs.writeFileSync(FILE, JSON.stringify(db));
 const hash = p => crypto.createHash('sha256').update('sajillo:' + (p || '')).digest('hex');
-const MIME = { '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.png': 'image/png', '.jpg': 'image/jpeg', '.webmanifest': 'application/manifest+json' };
 const pub = u => ({ id: u.id, name: u.name, role: u.role });
 const send = (res, code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
 const readBody = req => new Promise(ok => {
