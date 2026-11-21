@@ -47,7 +47,7 @@ const TAG = 'En casa, comer bien es cosa de todos.';
 const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
 async function api(m, u, b) {
-  const r = await fetch('api.php?p=' + encodeURIComponent(u.slice(1)), { method: m, headers: { 'content-type': 'application/json', 'x-token': S.token || '' }, body: b ? JSON.stringify(b) : undefined });
+  const r = await fetch('api.php?p=' + encodeURIComponent(u.slice(1)) + (m === 'GET' ? '' : '&m=' + m), { method: m === 'GET' ? 'GET' : 'POST', headers: { 'content-type': 'application/json', 'x-token': S.token || '' }, body: b ? JSON.stringify(b) : undefined });
   if (r.status === 401) { S.token = null; delete localStorage.tok; boot(); throw 0; }
   const t = await r.text(); let j;
   try { j = JSON.parse(t); } catch { alert('Error del servidor: ' + t.slice(0, 300)); throw 0; }

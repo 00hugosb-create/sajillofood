@@ -23,6 +23,7 @@ try {
 
 $p = array_values(array_filter(explode('/', $_GET['p'] ?? '')));
 $m = $_SERVER['REQUEST_METHOD'];
+if ($m === 'POST' && in_array($_GET['m'] ?? '', ['PUT', 'DELETE'], true)) $m = $_GET['m']; // OVH bloquea PUT/DELETE
 $b = json_decode(file_get_contents('php://input'), true) ?: [];
 $a = $p[0] ?? '';
 

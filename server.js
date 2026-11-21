@@ -21,7 +21,7 @@ const readBody = req => new Promise(ok => {
 });
 
 async function api(req, res, url) {
-  const m = req.method, p = (url.pathname === '/api.php' ? (url.searchParams.get('p') || '') : url.pathname.slice(4)).split('/').filter(Boolean), b = await readBody(req);
+  const m = req.method === 'POST' && ['PUT', 'DELETE'].includes(url.searchParams.get('m')) ? url.searchParams.get('m') : req.method, p = (url.pathname === '/api.php' ? (url.searchParams.get('p') || '') : url.pathname.slice(4)).split('/').filter(Boolean), b = await readBody(req);
   const me = db.users.find(u => u.id === db.sessions[req.headers['x-token']]);
   if (p[0] === 'users' && m === 'GET' && !p[1]) return send(res, 200, db.users.map(pub));
   if (p[0] === 'login' && m === 'POST') {
