@@ -97,8 +97,10 @@ const avg = (m, role) => {
 };
 const stars = (m) => [1, 2, 3, 4, 5].map(n => `<span class="st ${n <= (m.ratings[S.d.me.id] || 0) ? 'on' : ''}" onclick="rate('${m.id}',${n})" title="${n}">★</span>`).join('');
 
+const isAdult = () => S.d.me.role === 'adult';
 function render() {
-  const tabs = [['menu', 'Menú'], ['meals', 'Comidas'], ['shop', 'Compra'], ['rank', 'Ranking'], ['fam', 'Familia']];
+  if (!isAdult() && S.tab === 'shop') S.tab = 'menu';
+  const tabs = [['menu', 'Menú'], ['meals', 'Comidas'], ['shop', 'Compra'], ['rank', 'Ranking'], ['fam', 'Familia']].filter(t => t[0] !== 'shop' || isAdult());
   $('#app').innerHTML = `<header><img src="logo.png" alt="Sajillo Food"><div class="sp"></div><b>Hola, ${esc(S.d.me.name)}</b></header>
   <nav>${tabs.map(([k, t]) => `<button class="${S.tab === k ? 'on' : ''}" onclick="S.tab='${k}';render()">${t}</button>`).join('')}</nav>
   <main>${{ menu: menuV, meals: mealsV, shop: shopV, rank: rankV, fam: famV }[S.tab]()}</main><footer>${TAG}</footer>`;
@@ -112,23 +114,23 @@ function menuV() {
   <button class="btn sec sm" onclick="S.off++;render()">Siguiente →</button>${S.off ? `<button class="btn sm" onclick="S.off=0;render()">Esta semana</button>` : ''}</div><br>
   ${DAYS.map((d, i) => `<div class="card day ${i > 4 ? 'we' : ''}"><h3>${d}</h3>${slotsOf(i).map(([k, lab]) => {
     const key = i + '-' + k, m = meal(w[key]);
-    return `<div class="slot"><small>${lab}</small><select onchange="setMenu('${key}',this.value)" aria-label="${d} ${lab}"><option value="">— elegir —</option>${S.d.meals.map(x => `<option value="${x.id}" ${x.id === w[key] ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>${m?.photo ? `<img src="${m.photo}" alt="">` : '<span></span>'}</div>`;
+    return `<div class="slot"><small>${lab}</small>${!isAdult() ? `<b>${m ? esc(m.name) : '—'}</b>` : `<select onchange="setMenu('${key}',this.value)" aria-label="${d} ${lab}"><option value="">— elegir —</option>${S.d.meals.map(x => `<option value="${x.id}" ${x.id === w[key] ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`}${m?.photo ? `<img src="${m.photo}" alt="">` : '<span></span>'}</div>`;
   }).join('')}</div>`).join('')}
-  ${S.d.meals.length ? '' : '<p>Aún no hay comidas. Añade la primera en la pestaña <b>Comidas</b>.</p>'}`;
+  ${S.d.meals.length || !isAdult() ? '' : '<p>Aún no hay comidas. Añade la primera en la pestaña <b>Comidas</b>.</p>'}`;
 }
 async function setMenu(slot, v) { await api('PUT', '/menu', { week: wk(), slot, meal: v || null }); load(); }
 
 function mealsV() {
   const e = S.edit, m = e && e !== 'new' ? meal(e) : {};
-  const form = e ? `<div class="card"><h3>${m.id ? 'Editar comida' : 'Nueva comida'}</h3>
+  const form = !isAdult() ? '' : e ? `<div class="card"><h3>${m.id ? 'Editar comida' : 'Nueva comida'}</h3>
     <input id="mn" placeholder="Nombre (ej. Macarrones con tomate)" value="${esc(m.name)}"><br><br>
     <textarea id="mi" rows="4" placeholder="Ingredientes, uno por línea (para la lista de compra)">${esc(m.ingredients)}</textarea><br><br>
     <input id="mp" type="file" accept="image/*"><br><br>
     <div class="row"><button class="btn" onclick="saveMeal('${m.id || 'new'}')">Guardar comida</button><button class="btn sec" onclick="S.edit=null;render()">Cancelar</button></div></div>` : `<button class="btn" onclick="S.edit='new';render()">+ Nueva comida</button><br><br>`;
   return `<h2>Comidas</h2>${form}<div class="grid">${S.d.meals.map(m => `<div class="card meal">
     ${m.photo ? `<img src="${m.photo}" alt="${esc(m.name)}">` : '<div class="ph">🍽️</div>'}<h3>${esc(m.name)}</h3>
-    <div>${stars(m)}</div><small>Niños: ${avg(m, 'kid') ? avg(m, 'kid').toFixed(1) + ' ★' : 'sin votos'}</small>
-    <div class="row" style="margin-top:8px"><button class="btn sec sm" onclick="S.edit='${m.id}';render();scrollTo(0,0)">Editar</button><button class="btn sec sm" onclick="delMeal('${m.id}')">Borrar</button></div></div>`).join('')}</div>`;
+    <div>${stars(m)}</div><small>${m.ratings[S.d.me.id] ? 'Tu voto: ' + m.ratings[S.d.me.id] + ' ★ · toca otra estrella para cambiarlo' : 'Toca una estrella para votar'}</small><br><small>Niños: ${avg(m, 'kid') ? avg(m, 'kid').toFixed(1) + ' ★' : 'sin votos'}</small>
+    ${isAdult() ? `<div class="row" style="margin-top:8px"><button class="btn sec sm" onclick="S.edit='${m.id}';render();scrollTo(0,0)">Editar</button><button class="btn sec sm" onclick="delMeal('${m.id}')">Borrar</button></div>` : ''}</div>`).join('')}</div>`;
 }
 const shrink = f => new Promise(ok => {
   const i = new Image();

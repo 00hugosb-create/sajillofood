@@ -33,7 +33,8 @@ async function api(req, res, url) {
   const first = p[0] === 'users' && m === 'POST' && db.users.length === 0;
   if (!me && !first) return send(res, 401, { error: 'auth' });
   const adult = first || me.role === 'adult';
-  if (p[0] === 'data') return send(res, 200, { me: pub(me), users: db.users.map(pub), meals: db.meals, menu: db.menu, shop: db.shop });
+  if (!adult && ['meals', 'menu', 'shop'].includes(p[0]) && m !== 'GET') return send(res, 403, { error: 'Solo los adultos pueden hacer esto' });
+  if (p[0] === 'data') return send(res, 200, { me: pub(me), users: db.users.map(pub), meals: db.meals, menu: db.menu, shop: adult ? db.shop : [] });
   if (p[0] === 'users' && m === 'POST') {
     if (!adult || !b.name) return send(res, 403, {});
     const u = { id: crypto.randomUUID(), name: b.name.trim(), role: first ? 'adult' : b.role === 'kid' ? 'kid' : 'adult', pin: hash(b.pin) };

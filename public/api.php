@@ -42,6 +42,7 @@ $me = q('SELECT u.* FROM sessions s JOIN users u ON u.id=s.user_id WHERE s.token
 $first = $a === 'users' && $m === 'POST' && (int)q('SELECT COUNT(*) n FROM users')->fetch()['n'] === 0;
 if (!$me && !$first) out(['error' => 'auth'], 401);
 $adult = $first || $me['role'] === 'adult';
+if (!$adult && in_array($a, ['meals', 'menu', 'shop'], true) && $m !== 'GET') out(['error' => 'Solo los adultos pueden hacer esto'], 403);
 
 if ($a === 'data') {
   $meals = q('SELECT id,name,ingredients,(photo IS NOT NULL) hp,photo_v FROM meals ORDER BY name')->fetchAll();
@@ -56,7 +57,7 @@ if ($a === 'data') {
   foreach (q('SELECT * FROM menu')->fetchAll() as $r) $menu[$r['week']][$r['slot']] = $r['meal_id'];
   $shop = array_map(function ($r) { return ['t' => $r['t'], 'done' => (bool)$r['done']]; }, q('SELECT t,done FROM shop ORDER BY id')->fetchAll());
   out(['me' => ['id' => $me['id'], 'name' => $me['name'], 'role' => $me['role']],
-       'users' => q('SELECT id,name,role FROM users ORDER BY name')->fetchAll(), 'meals' => $meals, 'menu' => (object)$menu, 'shop' => $shop]);
+       'users' => q('SELECT id,name,role FROM users ORDER BY name')->fetchAll(), 'meals' => $meals, 'menu' => (object)$menu, 'shop' => $adult ? $shop : []]);
 }
 if ($a === 'users' && $m === 'POST') {
   if (!$adult || empty($b['name'])) out([], 403);
