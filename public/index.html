@@ -7,10 +7,10 @@
 *{box-sizing:border-box}
 body{margin:0;font-family:"Quicksand","Nunito","Trebuchet MS",system-ui,sans-serif;background:var(--c);color:var(--g);line-height:1.45}
 h2{font-size:1.5rem;margin:.2em 0 .6em}h3{margin:.2em 0}
-header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--w);border-bottom:4px solid var(--o)}
-header img{height:64px}.sp{flex:1}
-nav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;position:sticky;top:0;background:var(--c);z-index:5}
-nav button{border:2px solid var(--g);background:none;color:var(--g);border-radius:99px;padding:8px 16px;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer}
+header{display:flex;align-items:center;gap:12px;padding:6px 16px;background:var(--c);border-bottom:4px solid var(--o)}
+header img{height:128px}.sp{flex:1}
+nav{display:flex;gap:6px;padding:10px 12px;overflow:hidden;position:sticky;top:0;background:var(--c);z-index:5}
+nav button{border:2px solid var(--g);background:none;color:var(--g);border-radius:99px;padding:8px 16px;font:inherit;font-weight:700;white-space:nowrap;cursor:pointer;flex:1 1 auto}
 nav button.on{background:var(--g);color:var(--c)}
 main{max-width:980px;margin:0 auto;padding:8px 14px 30px}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -36,7 +36,7 @@ input,select,textarea{border:2px solid var(--line);background:#fff;border-radius
 .who button{padding:12px 20px;border-radius:14px;border:2px solid var(--g);background:var(--w);font-weight:700;cursor:pointer}
 .who button.on{background:var(--g);color:var(--c)}
 footer{text-align:center;padding:20px;font-size:.95rem}
-@media(max-width:560px){.slot{grid-template-columns:90px 1fr 44px}.slot img{width:44px;height:44px}header img{height:48px}}
+@media(max-width:560px){.slot{grid-template-columns:90px 1fr 44px}.slot img{width:44px;height:44px}header img{height:96px}header{padding:4px 12px}nav{gap:4px;padding:8px 8px}nav button{flex:1 1 0;min-width:0;padding:8px 2px;font-size:.8rem;border-width:1.5px}}
 </style></head><body>
 <div id="app"></div>
 <script>
@@ -49,7 +49,10 @@ const DAYS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', '
 async function api(m, u, b) {
   const r = await fetch('api.php?p=' + encodeURIComponent(u.slice(1)), { method: m, headers: { 'content-type': 'application/json', 'x-token': S.token || '' }, body: b ? JSON.stringify(b) : undefined });
   if (r.status === 401) { S.token = null; delete localStorage.tok; boot(); throw 0; }
-  return r.json();
+  const t = await r.text(); let j;
+  try { j = JSON.parse(t); } catch { alert('Error del servidor: ' + t.slice(0, 300)); throw 0; }
+  if (!r.ok) { alert(j.error || 'Error ' + r.status); throw 0; }
+  return j;
 }
 async function boot() {
   if (S.token) { S.d = await api('GET', '/data'); return render(); }
@@ -71,7 +74,7 @@ function loginView() {
 async function firstUser() {
   const name = $('#nn').value.trim(); if (!name) return;
   const r = await fetch('api.php?p=users', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name, pin: $('#np').value, role: 'adult' }) });
-  const j = await r.json(); S.token = j.token; localStorage.tok = j.token; boot();
+  const j = await r.json().catch(() => ({})); if (!j.token) return alert(j.error || 'Error del servidor (' + r.status + ')'); S.token = j.token; localStorage.tok = j.token; boot();
 }
 async function doLogin() {
   const r = await fetch('api.php?p=login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: S.pick, pin: $('#lp').value }) });
@@ -125,6 +128,7 @@ function mealsV() {
 const shrink = f => new Promise(ok => {
   const i = new Image();
   i.onload = () => { const k = Math.min(1, 800 / Math.max(i.width, i.height)), c = document.createElement('canvas'); c.width = i.width * k; c.height = i.height * k; c.getContext('2d').drawImage(i, 0, 0, c.width, c.height); ok(c.toDataURL('image/jpeg', .8)); };
+  i.onerror = () => { alert('No se pudo leer la foto; prueba con otra imagen (JPG o PNG).'); ok(null); };
   i.src = URL.createObjectURL(f);
 });
 async function saveMeal(id) {

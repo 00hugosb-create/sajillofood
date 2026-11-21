@@ -1,14 +1,16 @@
 <?php
+ini_set('display_errors', '0');
 // Backend de Sajillo Food con MySQL (base de datos de OVH). Configuración en ../config.php
 function out($o, $c = 200) { http_response_code($c); header('Content-Type: application/json'); echo json_encode($o); exit; }
 function h($p) { return hash('sha256', 'sajillo:' . ($p ?? '')); }
 function uid() { return bin2hex(random_bytes(16)); }
 function q($sql, $a = []) { global $pdo; $s = $pdo->prepare($sql); $s->execute($a); return $s; }
+set_exception_handler(function ($e) { out(['error' => 'Error del servidor: ' . $e->getMessage()], 500); });
 if (!is_file(__DIR__ . '/../config.php')) out(['error' => 'Falta config.php'], 500);
 $c = require __DIR__ . '/../config.php';
 try {
   $pdo = new PDO("mysql:host={$c['host']};dbname={$c['name']};charset=utf8mb4", $c['user'], $c['pass'],
-    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]);
+    [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC, PDO::ATTR_EMULATE_PREPARES => false]);
   foreach ([
     "CREATE TABLE IF NOT EXISTS users (id CHAR(32) PRIMARY KEY, name VARCHAR(60) NOT NULL, role VARCHAR(5) NOT NULL, pin CHAR(64) NOT NULL)",
     "CREATE TABLE IF NOT EXISTS sessions (token CHAR(32) PRIMARY KEY, user_id CHAR(32) NOT NULL)",
@@ -17,7 +19,7 @@ try {
     "CREATE TABLE IF NOT EXISTS menu (week CHAR(10), slot VARCHAR(20), meal_id CHAR(32) NOT NULL, PRIMARY KEY (week, slot))",
     "CREATE TABLE IF NOT EXISTS shop (id INT AUTO_INCREMENT PRIMARY KEY, t VARCHAR(200) NOT NULL, done TINYINT NOT NULL DEFAULT 0)",
   ] as $sql) $pdo->exec($sql);
-} catch (Throwable $e) { out(['error' => 'No se puede conectar a la base de datos'], 500); }
+} catch (Throwable $e) { out(['error' => 'No se puede conectar a la base de datos: ' . $e->getMessage()], 500); }
 
 $p = array_values(array_filter(explode('/', $_GET['p'] ?? '')));
 $m = $_SERVER['REQUEST_METHOD'];
@@ -51,7 +53,7 @@ if ($a === 'data') {
   }
   $menu = [];
   foreach (q('SELECT * FROM menu')->fetchAll() as $r) $menu[$r['week']][$r['slot']] = $r['meal_id'];
-  $shop = array_map(fn($r) => ['t' => $r['t'], 'done' => (bool)$r['done']], q('SELECT t,done FROM shop ORDER BY id')->fetchAll());
+  $shop = array_map(function ($r) { return ['t' => $r['t'], 'done' => (bool)$r['done']]; }, q('SELECT t,done FROM shop ORDER BY id')->fetchAll());
   out(['me' => ['id' => $me['id'], 'name' => $me['name'], 'role' => $me['role']],
        'users' => q('SELECT id,name,role FROM users ORDER BY name')->fetchAll(), 'meals' => $meals, 'menu' => (object)$menu, 'shop' => $shop]);
 }
@@ -74,7 +76,8 @@ if ($a === 'meals' && $m === 'PUT') {
   q('UPDATE meals SET name=?, ingredients=? WHERE id=?', [mb_substr($b['name'] ?? 'Sin nombre', 0, 80), mb_substr($b['ingredients'] ?? '', 0, 2000), $id]);
   $ph = $b['photo'] ?? '';
   if (is_string($ph) && strpos($ph, 'data:image/') === 0)
-    q('UPDATE meals SET photo=?, photo_v=? WHERE id=?', [base64_decode(explode(',', $ph)[1]), time(), $id]);
+  { $st = $pdo->prepare('UPDATE meals SET photo=?, photo_v=? WHERE id=?');
+    $st->bindValue(1, base64_decode(explode(',', $ph)[1]), PDO::PARAM_LOB); $st->bindValue(2, time(), PDO::PARAM_INT); $st->bindValue(3, $id); $st->execute(); }
   out(['id' => $id]);
 }
 if ($a === 'meals' && $m === 'DELETE') {
